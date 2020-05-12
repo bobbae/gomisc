@@ -1,0 +1,46 @@
+package main
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+
+	"golang.org/x/crypto/ssh"
+)
+
+func main() {
+}
+
+func downloadFile(url, fname string) error {
+	fmt.Println("attempt to retrieve file from url", "file", fname, "URL", url)
+	resp, err := http.Get(url)
+	if err != nil {
+		return fmt.Errorf("cannot get file from URL %s, %v", url, err)
+	}
+	fileout, err := os.Create(fname)
+	if err != nil {
+		return fmt.Errorf("can't create file %s,%v", fname, err)
+	}
+	_, err = io.Copy(fileout, resp.Body)
+	if err != nil {
+		return fmt.Errorf("can't write file %s, %v", fname, err)
+	}
+	resp.Body.Close() // nolint
+	fileout.Close()   // nolint
+	fmt.Println("retrieved file from URL", "URL", url, "file", fname)
+	return nil
+}
+
+func downloadFileTo(client *ssh.Client, url, fname, dest string) error {
+	err = downloadFile(url, fname)
+	if err != nil {
+		return err
+	}
+	out, err := client.Output("cp %s %s", fname, dest)
+	if err != nil {
+		fmt.Println("error, cannot mv", "fname", fname, "dest", dest, "error", err)
+		return err
+	}
+	return nil
+}
